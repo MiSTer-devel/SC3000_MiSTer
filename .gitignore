@@ -1,0 +1,17 @@
+# Quartus output
+db/
+incremental_db/
+output_files/
+simulation/
+greybox_tmp/
+*.qws
+*.rpt
+build_id.v
+
+# simulator build and run output
+verilator/obj*/
+verilator/out*/
+verilator/tests/out/
+verilator/tests/kbd/obj/
+
+.DS_Store
