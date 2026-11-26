@@ -2,7 +2,7 @@
 # Tape save round trip: BASIC III SAVEs a program into a blank .bit (Tape save
 # recorder), then a second run LOADs that file and runs the program.
 cd "$(dirname "$0")/.." || exit 1
-CART=${CART:-../software/INCOMING/basic3/basic3e/basic3e.bin}
+CART=../software/INCOMING/basic3/basic3e/basic3e.bin
 [ -f "$CART" ] || { echo "SKIP    tape_save_roundtrip (no $CART)"; exit 0; }
 mkdir -p tests/out
 ./obj_dir/Vsc3000_sim --cart "$CART" --rec tests/out/saved.bit --frames 2800 \

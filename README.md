@@ -39,6 +39,7 @@ from MAME, placed in `games/SC3000/`:
 | Cartridges | `.sg`, `.sc`, `.bin`, `.rom` |
 | Tapes | `.wav` (8 or 16-bit, any sample rate), `.bit` (MAME) |
 | Disks | `.sf7` |
+| SF-7000 printer | `.prn`, `.txt` |
 
 ## Cartridges
 
@@ -113,6 +114,50 @@ disk. Disk BASIC uses `FILES`, `LOAD "name"` and `SAVE "name"`. Anything you
 save is written back to the disk image on the SD card, so keep copies of
 your disks.
 
+Type `UTILITY` to start the IPL's utility program: `F` formats a disk (put
+the new disk in when it asks; any 160 KB file works as a blank disk), `C`
+copies a disk, `B` boots again.
+
+### Printer
+
+LPRINT and LLIST print into a file:
+
+1. Copy `releases/sf7000_printer_256k.prn` (a file of spaces) to
+   `games/SC3000/`.
+2. Mount it in **SF-7000 printer**.
+3. In Disk BASIC, type `CONSOLE ,,,,2` to choose the SF-7000's printer
+   (the default, `,,,,1`, is the SC-3000's own printer port).
+4. `LPRINT` and `LLIST` now go into the file.
+
+The file gets exactly what BASIC sends, printer control codes included (it
+starts with `ESC Q P ESC e`), and is written to the SD card half a second
+after printing stops. The file can't grow, so its size sets how much fits.
+Mounting it again starts from the beginning. With no file mounted, printing
+still works but the output is thrown away.
+
+### RS-232
+
+The SF-7000's serial port is connected to the MiSTer's UART. Choose the
+connection and the baud rate (9600 down to 300) in the system menu's
+**UART mode** (the page to the right of the core's menu). The core follows
+that baud rate. The Baud row only shows for connections other than None,
+but the rate you save there also applies with None.
+
+With the connection set to None, Linux's `/dev/ttyS1` on the MiSTer is the
+other end of the cable, for example:
+
+    stty -F /dev/ttyS1 9600 cs8 parenb -parodd cstopb raw -echo clocal
+    cat /dev/ttyS1
+
+In Disk BASIC, `COMSAVE` sends the program as text and `COMLOAD` receives
+one (it ends at an empty line). `COMSET 8,E` sets the format: 5 to 8 bits,
+parity N, E or O, always 2 stop bits. After booting, the format is 8 bits,
+even parity, 2 stop bits.
+
+Disk BASIC 1.0p has a bug: after a `COMSET`, the serial port stops sending
+and `COMSAVE` hangs (MAME does the same). Version 1.1p fixes it. With 1.0p,
+leave the format as it is after booting.
+
 ## Othello Multivision
 
 1. Put `boot1.rom` in `games/SC3000/`.
@@ -140,7 +185,7 @@ change straight away.
 
 | Page | Setting | |
 |---|---|---|
-| | Cartridge, Tape, Tape save, SF-7000 disk | load files |
+| | Cartridge, Tape, Tape save, SF-7000 disk, SF-7000 printer | load files |
 | | Load ROM | load the boot ROM of the chosen model by hand |
 | Machine | Model | SC-3000 (default), SG-1000 or Othello Multivision |
 | | Mapper | Auto (default), or force a cartridge type |
@@ -156,7 +201,8 @@ change straight away.
 
 ## Not supported yet
 
-- Printers, and the SF-7000's RS-232 port
+- The SC-3000's own printer port (the SF-7000's printer works)
+- SF-7000 RS-232: the CTS line and the synchronous mode
 - Tape loads started from inside the Multicart or Megacart menus may not
   work at 4x. Use Tape speed = Normal for those.
 
@@ -169,7 +215,7 @@ change straight away.
 | Sound | SN76489AN |
 | I/O | 8255 PPI: keyboard, joysticks, cassette |
 | RAM | 2 KB (SG-1000: 1 KB), plus any RAM on the cartridge |
-| SF-7000 | 64 KB RAM, IPL ROM, uPD765A floppy controller, 3" drive (160 KB) |
+| SF-7000 | 64 KB RAM, IPL ROM, uPD765A floppy controller, 3" drive (160 KB), 8251 RS-232, Centronics printer |
 | Othello Multivision | 2 KB RAM, 16 KB BIOS, keypad |
 
 ## Credits

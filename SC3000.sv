@@ -18,7 +18,6 @@ module emu
 
 assign ADC_BUS  = 'Z;
 assign USER_OUT = '1;
-assign {UART_RTS, UART_TXD, UART_DTR} = 0;
 assign {SD_SCK, SD_MOSI, SD_CS} = 'Z;
 assign {DDRAM_CLK, DDRAM_BURSTCNT, DDRAM_ADDR, DDRAM_DIN, DDRAM_BE, DDRAM_RD, DDRAM_WE} = 0;
 
@@ -41,15 +40,16 @@ reg  [127:0] cfg = 0;          // machine settings, latched at reset (osd-standa
 //          cartridge, 17 Rewind tape
 //   reset: 6 Border, 12 Model, 13 Video standard, 16:14 Mapper, 21:20 SF-7000 (cfg)
 // Media: F1 cartridge, F2 tape (SDRAM ch1), S1 Tape save (.bit recorder),
-// S0 SF-7000 disk (.sf7), F0 Load ROM
+// S0 SF-7000 disk (.sf7), S2 SF-7000 printer output (a blank file), F0 Load ROM
 // = the SF-7000 IPL (games/SC3000/boot0.rom = MAME sf7000 ipl.rom).
 parameter CONF_STR = {
-	"SC3000;;",
+	"SC3000;UART9600:4800:2400:1200:600:300;",
 	"-;",
 	"F1,SG SC BINROM,Cartridge;",
 	"F2,WAVBIT,Tape;",
 	"S1,BIT,Tape save;",
 	"S0,SF7,SF-7000 disk;",
+	"S2,TXTPRN,SF-7000 printer;",
 	"F0,ROM,Load ROM;",
 	"-;",
 	"P1,Machine;",
@@ -131,24 +131,34 @@ wire [21:0] gamma_bus;
 wire [10:0] ps2_key;
 wire [24:0] ps2_mouse;
 
-// Virtual disks: 0 = SF-7000 disk, 1 = Tape save
-wire  [1:0] img_mounted;
+// Virtual disks: 0 = SF-7000 disk, 1 = Tape save, 2 = SF-7000 printer
+wire  [2:0] img_mounted;
 wire        img_readonly;
 wire [63:0] img_size;
-wire [31:0] sd_lba[2];
-wire  [1:0] sd_rd, sd_wr, sd_ack;
+wire [31:0] sd_lba[3];
+wire  [2:0] sd_rd, sd_wr, sd_ack;
 wire  [8:0] sd_buff_addr;
 wire  [7:0] sd_buff_dout;
-wire  [7:0] sd_buff_din[2];
+wire  [7:0] sd_buff_din[3];
 wire        sd_buff_wr;
 
-hps_io #(.CONF_STR(CONF_STR), .VDNUM(2)) hps_io
+// SF-7000 RS-232 baud (the jumper on a real unit) follows the speed picked in
+// Main's UART menu, so both ends of the MiSTer UART always agree
+wire  [7:0] uart_mode;
+wire [31:0] uart_speed;
+wire  [2:0] sf7_baud = (uart_speed == 0 || uart_speed >= 9600) ? 3'd0 :
+                       (uart_speed >= 4800) ? 3'd1 : (uart_speed >= 2400) ? 3'd2 :
+                       (uart_speed >= 1200) ? 3'd3 : (uart_speed >= 600)  ? 3'd4 : 3'd5;
+
+hps_io #(.CONF_STR(CONF_STR), .VDNUM(3)) hps_io
 (
 	.clk_sys(clk_sys),
 	.HPS_BUS(HPS_BUS),
 
 	.buttons(buttons),
 	.status(status),
+	.uart_mode(uart_mode),
+	.uart_speed(uart_speed),
 	.status_menumask({14'd0, ~ipl_loaded | (status[26:25] != 2'd0), pending}),
 	.forced_scandoubler(forced_scandoubler),
 	.gamma_bus(gamma_bus),
@@ -164,7 +174,7 @@ hps_io #(.CONF_STR(CONF_STR), .VDNUM(2)) hps_io
 	.img_readonly(img_readonly),
 	.img_size(img_size),
 	.sd_lba(sd_lba),
-	.sd_blk_cnt('{6'd0, 6'd0}),
+	.sd_blk_cnt('{6'd0, 6'd0, 6'd0}),
 	.sd_rd(sd_rd),
 	.sd_wr(sd_wr),
 	.sd_ack(sd_ack),
@@ -334,6 +344,24 @@ sf7000 sf7000
 	.sd_buff_dout(sd_buff_dout),
 	.sd_buff_din(sd_buff_din[0]),
 	.sd_buff_wr(sd_buff_wr),
+	// RS-232: the MiSTer UART (CTS ignored, so nothing hangs with no device on the line)
+	.baud(sf7_baud),
+	.uart_txd(UART_TXD),
+	.uart_rxd(UART_RXD),
+	.uart_cts_n(1'b0),
+	.uart_dsr_n(UART_DSR),
+	.uart_rts_n(UART_RTS),
+	.uart_dtr_n(UART_DTR),
+	.prn_img_mounted(img_mounted[2]),
+	.prn_img_readonly(img_readonly),
+	.prn_img_size(img_size),
+	.prn_sd_lba(sd_lba[2]),
+	.prn_sd_wr(sd_wr[2]),
+	.prn_sd_ack(sd_ack[2]),
+	.prn_sd_buff_addr(sd_buff_addr),
+	.prn_sd_buff_din(sd_buff_din[2]),
+	.prn_active(),
+	.prn_length(),
 	.motor_led(fdd_motor)
 );
 
@@ -393,6 +421,7 @@ sc3000_tape tape
 // Tape save: what SAVE writes on PC4 goes to a .bit file (sc3000_tape_rec.sv)
 wire rec_active;
 assign sd_rd[1] = 1'b0;
+assign sd_rd[2] = 1'b0;          // printer: write only
 sc3000_tape_rec tape_rec
 (
 	.clk(clk_sys),
