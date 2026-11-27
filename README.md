@@ -36,7 +36,7 @@ from MAME, placed in `games/SC3000/`:
 
 | Type | Extensions |
 |---|---|
-| Cartridges | `.sg`, `.sc`, `.bin`, `.rom` |
+| Cartridges | `.sg`, `.sc`, `.bin`, `.rom`, `.sms` |
 | Tapes | `.wav` (8 or 16-bit, any sample rate), `.bit` (MAME) |
 | Disks | `.sf7` |
 | SF-7000 printer | `.prn`, `.txt` |
@@ -52,6 +52,12 @@ by itself, so leave **Machine > Mapper** on Auto. That includes:
   puts the pen down
 - Taiwanese RAM cartridges
 - the SC-3000 Survivors Multicart and Megacart
+- Sega's 315-5208 paging chip, as on *Loretta no Shouzou* (often found
+  as a `.sms` file). Any unknown image over 64 KB gets this type.
+
+A few programs need extra RAM on the cartridge. **Machine > Cart RAM**
+adds it: 2 KB or 16 KB at 8000-BFFF, or 32 KB at 8000-FFFF. Auto (the
+default) gives each known cartridge what it had.
 
 Joystick: button 1 and button 2. Start is the RESET key on the SC-3000
 and PAUSE on the SG-1000.
@@ -179,9 +185,10 @@ Set Model back to SC-3000 afterwards.
 
 ## Menu
 
-Changes on the **Machine** page wait until you choose **Apply and reset**
-("Changes pending" shows until then). Video, input and audio settings
-change straight away.
+Only the settings that change the machine (Model, Mapper, SF-7000, SK-1100
+keyboard, Cart RAM) wait until you choose **Apply and reset** ("Changes
+pending" shows until then). Everything else changes straight away; Video
+standard and Border at the next frame.
 
 | Page | Setting | |
 |---|---|---|
@@ -190,6 +197,8 @@ change straight away.
 | Machine | Model | SC-3000 (default), SG-1000 or Othello Multivision |
 | | Mapper | Auto (default), or force a cartridge type |
 | | SF-7000 | Auto: attached when a disk is mounted (default), On, Off |
+| | SK-1100 keyboard | SG-1000 only: Off (default) or On, the SC-3000 keyboard unit |
+| | Cart RAM | Auto (default), Off, 2KB, 16KB or 32KB |
 | | Tape speed | 4x (default) or Normal |
 | | Rewind tape, Eject cartridge | |
 | Video | Video standard | NTSC (default) or PAL |
